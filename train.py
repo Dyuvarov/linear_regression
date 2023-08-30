@@ -1,5 +1,8 @@
 import csv
+import json
 import matplotlib.pyplot as plt
+
+DB_FILE = "db"
 
 
 def read_dataset(filepath):
@@ -15,26 +18,45 @@ def read_dataset(filepath):
     return kms, prices
 
 
+def get_t_const():
+    f = open(DB_FILE)
+    data = json.load(f)
+    return data['t0'], data['t1']
+
+
+def set_t_const(t0, t1):
+    data = {'t0': t0, 't1': t1}
+    with open(DB_FILE, 'w') as outfile:
+        json.dump(data, outfile)
+
+
 def linear_regression(kms, prices):
-    iterations = 100
-    learning_rate = 0.1
-    t0 = 0.0
-    t1 = 0.0  # TODO: read t0,t1 from db
+    iterations = 500
+    learning_rate = 0.2
+    t0, t1 = get_t_const()
+    loss = float('inf')
     dataset_size = len(kms)
     for i in range(iterations):
         print("iteration ", i)
         tmp_t0_sum = 0.0
         tmp_t1_sum = 0.0
         loss_sum = 0.0
+        prev_loss = loss
         for km, price in zip(kms, prices):
-            loss = estimate_price(t0, t1, km) - price
-            loss_sum += abs(loss)
-            tmp_t0_sum += loss
-            tmp_t1_sum += loss * km
-        t0 -= learning_rate * tmp_t0_sum / dataset_size
-        t1 -= learning_rate * tmp_t1_sum / dataset_size
-        print("loss = ", loss_sum / dataset_size)
-
+            cur_loss = estimate_price(t0, t1, km) - price
+            tmp_t0_sum += cur_loss
+            tmp_t1_sum += cur_loss * km
+            loss_sum += abs(cur_loss)
+        tmp_t0 = t0 - learning_rate * tmp_t0_sum / dataset_size
+        tmp_t1 = t1 - learning_rate * tmp_t1_sum / dataset_size
+        loss = loss_sum / dataset_size
+        print("loss = ", loss)
+        if loss > prev_loss:
+            print("Stop training. Will worsen the result")
+            break
+        t0 = tmp_t0
+        t1 = tmp_t1
+    set_t_const(t0, t1)
     return t0, t1
 
 
@@ -49,7 +71,7 @@ def normalize(data):
     normalized = []
 
     for val in data:
-        normalized.append((val-min_val) / (max_val - min_val))
+        normalized.append((val - min_val) / (max_val - min_val))
     return normalized
 
 
@@ -59,8 +81,8 @@ def main():
     normalized_prices = normalize(prices)
 
     # dataset graph visualisation
-    plt.plot(normalized_kms, normalized_prices, 'bo')
-    plt.show()
+    # plt.plot(normalized_kms, normalized_prices, 'bo')
+    # plt.show()
 
     t0, t1 = linear_regression(normalized_kms, normalized_prices)
     line_x = [min(normalized_kms), max(normalized_kms)]
