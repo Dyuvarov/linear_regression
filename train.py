@@ -75,29 +75,34 @@ def normalize(data):
     return normalized
 
 
-def main():
-    kms, prices = read_dataset("data.csv")
-    normalized_kms = normalize(kms)
-    normalized_prices = normalize(prices)
+# Revert normalization
+def denormalize(normalized, denormalized_max, denormalized_min):
+    denormalized = []
+    for val in normalized:
+        denormalized.append(denormalized_min + val * (denormalized_max - denormalized_min))
+    return denormalized
 
-    # dataset graph visualisation
-    # plt.plot(normalized_kms, normalized_prices, 'bo')
-    # plt.show()
 
-    t0, t1 = linear_regression(normalized_kms, normalized_prices)
-    line_x = [min(normalized_kms), max(normalized_kms)]
-    line_y = []
-    for km in normalized_kms:
-        line_y.append(estimate_price(t0, t1, km))
+# Build graph
+def visualize(t0, t1, norm_kms, kms, prices):
+    norm_line_y = [estimate_price(t0, t1, min(norm_kms)), estimate_price(t0, t1, max(norm_kms))]
+    denorm_line_y = denormalize(norm_line_y, max(prices), min(prices))
+    denorm_line_x = [min(kms), max(kms)]
 
-    # dataset with prediction function
-    plt.plot(normalized_kms, normalized_prices, 'bo', normalized_kms, line_y, 'r-')
-    # plt.plot(normalized_kms, normalized_prices, "bo", line_x, line_y)
+    plt.plot(kms, prices, 'go', denorm_line_x, denorm_line_y, 'r')
     plt.xlabel("km")
     plt.ylabel("price")
     plt.show()
 
 
+def main():
+    kms, prices = read_dataset("data.csv")
+    norm_kms = normalize(kms)
+    norm_prices = normalize(prices)
+
+    t0, t1 = linear_regression(norm_kms, norm_prices)
+    visualize(t0, t1, norm_kms, kms, prices)
+
+
 if __name__ == '__main__':
     main()
-    # input("Press Enter to continue...")
